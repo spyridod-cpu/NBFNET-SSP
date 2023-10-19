@@ -51,7 +51,7 @@ obtained using a AMD 5600 cpu.
         <th>MDSP with error recovery</th>
     </tr>
     <tr>
-        <th>lagadas_small</th>
+        <th>lagadas_extra_small</th>
         <th>4</th>
         <th>3</th>
         <th>90%</th>
