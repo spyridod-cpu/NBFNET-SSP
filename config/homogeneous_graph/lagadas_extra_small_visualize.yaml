@@ -1,0 +1,49 @@
+output_dir: ~/experiments/
+
+dataset:
+  class: Road
+  path: ~/Desktop/NBFNET-SSP/data
+  name: lagadas_extra_small
+  random_weights: no
+
+task:
+  class: PredecessorPrediction
+  model:
+    class: NBFNet
+    input_dim: 32
+    hidden_dims: [32,32,32,32]
+    message_func: add
+    aggregate_func: min
+    short_cut: no
+    layer_norm: no
+    dependent: no
+    remove_one_hop: no
+    symmetric: no
+    num_nodes: 21
+    num_iterations: 4
+    recover: yes
+  criterion: ce
+
+optimizer:
+  class: Adam
+  lr: 5.0e-3
+
+engine:
+  gpus: {{ gpus }}
+  batch_size: 1
+
+
+
+metric: accuracy
+
+
+checkpoint: {{ checkpoint }}
+
+data:
+ name: lagadas_extra_small
+ bounding_box:
+  xlow: 23.06412
+  xhigh: 23.06702
+  ylow: 40.75029
+  yhigh: 40.74875
+ threshold: 0

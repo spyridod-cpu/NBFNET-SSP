@@ -1,0 +1,44 @@
+output_dir: ~/experiments/
+
+dataset:
+  class: Road
+  path: ~/Desktop/NBFNET-SSP/data
+  name: center
+  random_weights: no
+
+task:
+  class: PredecessorPrediction
+  model:
+    class: NBFNet
+    input_dim: 32
+    hidden_dims: [32, 32, 32]
+    message_func: add
+    aggregate_func: min
+    short_cut: no
+    layer_norm: no
+    dependent: no
+    remove_one_hop: no
+    symmetric: no
+    num_nodes: 304
+    num_iterations: 25
+    recover: yes
+  criterion: ce
+
+optimizer:
+  class: Adam
+  lr: 5.0e-3
+
+engine:
+  gpus: {{ gpus }}
+  batch_size: 1
+
+
+metric: accuracy
+data:
+ name: center
+ bounding_box:
+  xlow: 22.9411
+  xhigh: 22.9543
+  ylow: 40.6312
+  yhigh: 40.6412
+ threshold: 0
