@@ -107,7 +107,7 @@ you choose must be consistent across all configuration files.
 Having done that you can run the following command.
 
 ```commandline
-python scripts/create_dataset . py -c config/homogeneous_graph/create_name_of_your_dataset.yaml
+python scripts/create_dataset.py -c config/homogeneous_graph/create_name_of_your_dataset.yaml
 ```
 This script creates the files storing the nodes, edges and weights your chosen location.
 Next, you need to create your own configuration files for training and visualization.
