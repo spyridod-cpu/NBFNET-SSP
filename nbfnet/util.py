@@ -96,6 +96,7 @@ def parse_args():
 
 #function that builds the solver
 #input: configuration parameters, the dataset
+#output: the solver
 def build_solver(cfg, dataset):
     train_set, valid_set, test_set = dataset.split()
     #test_set = valid_set = train_set

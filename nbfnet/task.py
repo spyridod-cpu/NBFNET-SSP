@@ -87,6 +87,10 @@ class PredecessorPrediction(tasks.NodePropertyPrediction, core.Configurable):
         self.valid_sources = valid_sources
         self.test_sources = test_sources
 
+    #function that runs the model, obtains the predictions, makes the targets (predecessor for each node) and
+    #returns the predictions and the ground truth
+    #input: the source node
+    #output: the predictions and the ground truths for each node
     def predict_and_target(self, batch, all_loss=None, metric=None):
         batch_size = len(batch)
         node_0 = batch['node_index']
@@ -142,6 +146,8 @@ class PredecessorPrediction(tasks.NodePropertyPrediction, core.Configurable):
 
         return pred, target
 
+    #A forward pass through the model. Obtains the predictions and the ground truths for each node
+    #and calculates the loss (cross_entropy).
     def forward(self, batch):
         """"""
         all_loss = torch.tensor(0, dtype=torch.float32, device=self.device)
@@ -170,6 +176,9 @@ class PredecessorPrediction(tasks.NodePropertyPrediction, core.Configurable):
 
         return all_loss, metric
 
+    #evaluate the model using accuracy as a metric.
+    #input: Predictions and ground truths
+    #output: accuracy
     def evaluate(self, pred, target):
 
         #pred = pred.flatten()

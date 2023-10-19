@@ -385,7 +385,6 @@ class Road(data.NodeClassificationDataset):
         v = self.edge_weights
         v_p = (v - v_min) / (v_max - v_min) * (new_max - new_min) + new_min
         self.edge_weights = v_p
-        #self.edge_weights = F.normalize(self.edge_weights.unsqueeze(0), p=2).squeeze(0)
         #there is an option for random weights instead of the true weights.
         if random_weights:
             self.edge_weights = torch.randint(1, 5, size = self.edge_weights.size())

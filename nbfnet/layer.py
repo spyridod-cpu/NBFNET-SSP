@@ -90,6 +90,9 @@ class GeneralizedRelationalConv(layers.MessagePassingBase):
 
         return message
 
+    #Aggregate function of the model.
+    #input: the graph and the messages produced by the message function
+    #output: the aggregated messages, the message source nodes for each node
     def aggregate(self, graph, message):
         # get nodes sending and receiving a message
         node_in, node_out = graph.edge_list.t()[:2]

@@ -95,8 +95,10 @@ class NeuralBellmanFordNetwork(nn.Module, core.Configurable):
         return graph
 
 
-    #Bellman ford algorithm.
+    #Bellman ford algorithm. Pass the input through the model repeatedly to obtain the final
+    #node representations with respect to the source node.
     #input: The graph, the source node and the type of relation (0).
+    #output: The node representations, the graph for each layer, and message source node for each node.
     def bellmanford(self, graph, h_index, r_index, separate_grad=False):
         #get representation of an edge of relation type 0
         query = self.query(r_index)
@@ -147,6 +149,7 @@ class NeuralBellmanFordNetwork(nn.Module, core.Configurable):
 
     #Forward pass through the model.
     #input: The graph and the source node, the type of relation (0).
+    #output: The score (prediction) for each node, and the message source node for each node.
     def forward(self, graph, h_index, r_index=None, all_loss=None, metric=None):
 
         shape = h_index.shape
@@ -170,194 +173,11 @@ class NeuralBellmanFordNetwork(nn.Module, core.Configurable):
         #classify nodes based on node representaions
         score = self.mlp(feature).squeeze(-1)
         return score, predecessor
-    '''
-    def forward(self, graph, h_index, t_index, r_index=None, all_loss=None, metric=None):
-        if all_loss is not None:
-            graph = self.remove_easy_edges(graph, h_index, t_index, r_index)
 
-        shape = h_index.shape
-        if graph.num_relation:
-            graph = graph.undirected(add_inverse=True)
-            h_index, t_index, r_index = self.negative_sample_to_tail(h_index, t_index, r_index)
-        else:
-            graph = self.as_relational_graph(graph)
-            h_index = h_index.view(-1, 1)
-            t_index = t_index.view(-1, 1)
-            r_index = torch.zeros_like(h_index)
-
-        assert (h_index[:, [0]] == h_index).all()
-        assert (r_index[:, [0]] == r_index).all()
-        output = self.bellmanford(graph, h_index[:, 0], r_index[:, 0])
-        feature = output["node_feature"].transpose(0, 1)
-        index = t_index.unsqueeze(-1).expand(-1, -1, feature.shape[-1])
-        feature = feature.gather(1, index)
-
-        if self.symmetric:
-            assert (t_index[:, [0]] == t_index).all()
-            output = self.bellmanford(graph, t_index[:, 0], r_index[:, 0])
-            inv_feature = output["node_feature"].transpose(0, 1)
-            index = h_index.unsqueeze(-1).expand(-1, -1, inv_feature.shape[-1])
-            inv_feature = inv_feature.gather(1, index)
-            feature = (feature + inv_feature) / 2
-
-        score = self.mlp(feature).squeeze(-1)
-        return score.view(shape)
-    '''
-    '''
-    def visualize(self, graph, h_index, t_index, r_index):
-        assert h_index.numel() == 1 and h_index.ndim == 1
-        graph = graph.undirected(add_inverse=True)
-
-        output = self.bellmanford(graph, h_index, r_index, separate_grad=True)
-        feature = output["node_feature"]
-        step_graphs = output["step_graphs"]
-
-        index = t_index.unsqueeze(0).unsqueeze(-1).expand(-1, -1, feature.shape[-1])
-        feature = feature.gather(0, index).squeeze(0)
-        score = self.mlp(feature).squeeze(-1)
-
-        edge_weights = [graph.edge_weight for graph in step_graphs]
-        edge_grads = autograd.grad(score, edge_weights)
-        for graph, edge_grad in zip(step_graphs, edge_grads):
-            with graph.edge():
-                graph.edge_grad = edge_grad
-        distances, back_edges = self.beam_search_distance(step_graphs, h_index, t_index, self.num_beam)
-        paths, weights = self.topk_average_length(distances, back_edges, t_index, self.path_topk)
-
-        return paths, weights
-
-    '''
-    '''
-    def visualize(self, graph, h_index, t_index, r_index):
-        assert h_index.numel() == 1 and h_index.ndim == 1
-        output, dec = self.forward(graph, h_index, r_index)
-        preds = []
-        pred = output
-        prev_node2 = -1
-        for i in range(0, graph.num_node):
-            prev = (graph.edge_list[:, 1] == i).nonzero(as_tuple=False).flatten()
-            prev = graph.edge_list[prev, 0]
-            #pred[i] = pred[i, prev]
-            if not prev.tolist() == []:
-                preds.append(prev.tolist())
-            else:
-                preds.append([i])
-
-        temp_index = t_index.item()
-        prev_node = 100
-        path = [temp_index]
-        prev_index = 0
-        if not temp_index == h_index:
-            for i in range(0, len(preds)):
-                prev_node = torch.Tensor(preds[temp_index]).long()
-                for prev_ in prev_node:
-                    if prev_ == h_index.item():
-                        prev_node2 = h_index.item()
-                        break
-                    if prev_ in path:
-                        if len(prev_node) !=1:
-                            prev_node = prev_node[prev_node != prev_]
-                        else:
-                            prev_index +=1
-                            prev_node = torch.Tensor([path[len(path)-1-prev_index]]).long()
-                            prev_index += 1
-                    else:
-                        prev_index = 0
-                if prev_node2 != h_index.item():
-                    prev_node = prev_node[torch.argmax(pred[0, temp_index, prev_node])].tolist()
-                else:
-                    path.append(prev_node2)
-                    break
-
-                path.append(prev_node)
-
-                temp_index = prev_node
-        else:
-            path = [h_index.item()]
-        path.reverse()
-        path = list(dict.fromkeys(path))
-        #path.append(t_index.item())
-        return path
-    
-    
-    def visualize(self, graph, h_index, t_index, r_index):
-        if self.recover:
-            assert h_index.numel() == 1 and h_index.ndim == 1
-            output, dec = self.forward(graph, h_index, r_index)
-            preds = []
-            pred = output
-            prev_node2 = -1
-            for i in range(0, graph.num_node):
-                prev = (graph.edge_list[:, 1] == i).nonzero(as_tuple=False).flatten()
-                prev = graph.edge_list[prev, 0]
-                #pred[i] = pred[i, prev]
-                if not prev.tolist() == []:
-                    preds.append(prev.tolist())
-                else:
-                    preds.append([i])
-    
-            temp_index = t_index.item()
-            prev_node = 100
-            path = [temp_index]
-            if not temp_index == h_index:
-                for i in range(0, len(preds)):
-                    prev_node = torch.Tensor(preds[temp_index]).long()
-                    for prev_ in prev_node:
-                        if prev_ == h_index.item():
-                            prev_node2 = h_index.item()
-                            break
-                        if prev_ in path:
-                            if len(prev_node) !=1:
-                                prev_node = prev_node[prev_node != prev_]
-                    if prev_node2 != h_index.item():
-                        prev_node = prev_node[torch.argmax(pred[0, temp_index, prev_node])].tolist()
-                    else:
-                        path.append(prev_node2)
-                        break
-    
-                    path.append(prev_node)
-    
-                    temp_index = prev_node
-            else:
-                path = [h_index.item()]
-            path.reverse()
-            #path.append(t_index.item())
-            return path
-        else:
-                assert h_index.numel() == 1 and h_index.ndim == 1
-                output, dec = self.forward(graph, h_index, r_index)
-                preds = []
-                pred = output
-                for i in range(0, graph.num_node):
-                    prev = (graph.edge_list[:, 1] == i).nonzero(as_tuple=False).flatten()
-                    prev = graph.edge_list[prev, 0]
-                    # pred[i] = pred[i, prev]
-                    if not prev.tolist() == []:
-                        preds.append(prev[torch.argmax(pred[0, i, prev])].tolist())
-                    else:
-                        preds.append(i)
-
-                temp_index = t_index.item()
-                prev_node = 100
-                path = [temp_index]
-                if not temp_index == h_index:
-                    for i in range(0, len(preds)):
-                        prev_node = preds[temp_index]
-                        if prev_node == h_index.item():
-                            path.append(prev_node)
-                            break
-
-                        path.append(prev_node)
-
-                        temp_index = prev_node
-                else:
-                    path = [h_index.item()]
-                path.reverse()
-                # path.append(t_index.item())
-                return path
-
-    '''
-
+    #Fuction that constructs the predicted shortest path from source node h_index, to destination
+    #node t_index. There is an option to use a recovery algorithm.
+    #input: the graph, the source node, the destination node and the relation type (always 0)
+    #output: The model predicted path.
     def visualize(self, graph, h_index, t_index, r_index):
         #error recovery algorithm is used
         if self.recover:
@@ -482,74 +302,6 @@ class NeuralBellmanFordNetwork(nn.Module, core.Configurable):
             path.reverse()
             # path.append(t_index.item())
             return path
-    '''
-    def visualize(self, graph, h_index, t_index, r_index):
-        assert h_index.numel() == 1 and h_index.ndim == 1
-        output, dec = self.forward(graph, h_index, r_index)
-        preds = []
-        pred = output
-        for i in range(0, graph.num_node):
-            prev = (graph.edge_list[:, 1] == i).nonzero(as_tuple=False).flatten()
-            prev = graph.edge_list[prev, 0]
-            #pred[i] = pred[i, prev]
-            if not prev.tolist() == []:
-                preds.append(prev[torch.argmax(pred[0, i, prev])].tolist())
-            else:
-                preds.append(i)
-
-        temp_index = t_index.item()
-        prev_node = 100
-        path = [temp_index]
-        if not temp_index == h_index:
-            for i in range(0, len(preds)):
-                prev_node = preds[temp_index]
-                if prev_node == h_index.item():
-                    path.append(prev_node)
-                    break
-
-                path.append(prev_node)
-
-                temp_index = prev_node
-        else:
-            path = [h_index.item()]
-        path.reverse()
-        #path.append(t_index.item())
-        return path
-    '''
-    '''
-    def visualize(self, graph, h_index, t_index, r_index):
-        assert h_index.numel() == 1 and h_index.ndim == 1
-        output = self.forward(graph, h_index, r_index)
-
-        pred = output.squeeze(0)
-        ar = torch.argmax(pred, 1)
-        pred_sorted, indices_sorted = torch.sort(pred, 0)
-        for i in range(0, len(pred)):
-            if i != h_index.item():
-                for k in range(0, len(pred) - 1):
-                    if [ar[i], i] not in graph.edge_list.tolist():
-                        ar[i] = indices_sorted[i][k]
-                    else:
-                        break
-            else:
-                ar[i] = i
-        temp_index = t_index
-        prev_node = 100
-        path = []
-        for i in range(0, len(pred)):
-
-            prev_node = ar[temp_index]
-            if prev_node == temp_index:
-                break
-
-            path.append(prev_node)
-
-            temp_index = prev_node
-        path.reverse()
-        path.append(t_index)
-        return path
-    '''
-        
 
 
 
