@@ -94,7 +94,7 @@ obtained using a AMD 5600 cpu.
 </table>
 
 ## Custom Datasets ##
-To create your own custom dataset you these steps. 
+To create your own custom dataset you follow these steps. 
 
 First you need to decide on a location for your road network. For this purpose head
 over to [Open Street Map](https://www.openstreetmap.org) find the location you would like and get the coordinates of 
