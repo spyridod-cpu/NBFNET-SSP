@@ -2,7 +2,7 @@ output_dir: ~/experiments/
 
 dataset:
   class: Road
-  path: ~/Desktop/NBFNET-SSP/data
+  path: ~/Desktop/NBFNET-SSP11/data
   name: center
   random_weights: no
 
@@ -11,7 +11,7 @@ task:
   model:
     class: NBFNet
     input_dim: 32
-    hidden_dims: [32, 32, 32]
+    hidden_dims: [32, 32, 32, 32]
     message_func: add
     aggregate_func: min
     short_cut: no
@@ -20,7 +20,7 @@ task:
     remove_one_hop: no
     symmetric: no
     num_nodes: 304
-    num_iterations: 25
+    num_iterations: 30
     recover: yes
   criterion: ce
 
@@ -41,4 +41,4 @@ data:
   xhigh: 22.9543
   ylow: 40.6312
   yhigh: 40.6412
- threshold: 0
+ threshold: 8000

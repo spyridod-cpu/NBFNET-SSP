@@ -7,7 +7,11 @@ import networkx as nx
 import matplotlib.pyplot as plt
 import yaml
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
+from torchdrug.data import graph
+from torch.nn import CrossEntropyLoss
 from nbfnet import util
+from networkx import shortest_paths as sp
+
 
 
 
@@ -63,24 +67,34 @@ def produce_road_graph(name, **bounding_box):
     nodes = G.nodes
     #Translate original node ids to [0, num_nodes-1] and back
     nodes_vocab, inv_node_vocab = graphdict(nodes)
-    node_features = [[node['x'], node['y'], 0] for node in G.nodes._nodes.values()]
+    node_features = [[nodes_vocab[id], node['x'], node['y']] for node, id in zip(G.nodes._nodes.values(), nodes)]
     #produce a sequence of ids and 0 as class of each node for nodes.txt
     nodes = [[nodes_vocab[node], 0] for node in nodes]
+    #nodes_translated = [nodes_vocab[node] for node in nodes]
     weights = []
-    #store weights of graph to weights.txt
-    for i, j in G.edges():
-        weight = G[i][j][0]['length']
-        weights.append([weight])
+
 
     #store non self looping edges in edges.txt
     edge_list = [[nodes_vocab[edge[0]], nodes_vocab[edge[1]]] for edge in G.edges if nodes_vocab[edge[0]] != nodes_vocab[edge[1]] ]
+
+    #store weights of graph to weights.txt
+    for i, j in edge_list:
+        weight = G[inv_node_vocab[i]][inv_node_vocab[j]][0]['length']
+        weights.append([weight])
+
+
 
     #store the dictionaries mapping node ids in two files, nodes_vocab.txt and inv_nodes_vocab.txt
     resultList = new_list = list(map(list, nodes_vocab.items()))
     resultList2 = new_list = list(map(list, inv_node_vocab.items()))
 
+    with open(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'data', name + '_node_features.txt')), 'w', encoding='UTF8', newline='') as f:
+        writer = csv.writer(f, delimiter='\t')
+        # write multiple rows
+        writer.writerows(node_features)
+
     with open(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'data', name+ '_nodes.txt')), 'w', encoding='UTF8', newline='') as f:
-        writer = csv.writer(f,delimiter='\t')
+        writer = csv.writer(f, delimiter='\t')
         # write multiple rows
         writer.writerows(nodes)
     with open(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'data', name + '_edges.txt')), 'w', encoding='UTF8', newline='') as f:
@@ -101,6 +115,8 @@ def produce_road_graph(name, **bounding_box):
         writer = csv.writer(f, delimiter='\t')
         # write multiple rows
         writer.writerows(weights)
+
+
 
 
 if __name__ == '__main__':

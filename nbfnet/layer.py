@@ -64,7 +64,7 @@ class GeneralizedRelationalConv(layers.MessagePassingBase):
         node_input = input[node_in]
         # get representation of the edges according to relation. We only have relation 0.
         edge_input = relation_input[relation]
-#        edge_weight = graph.edge_weight.reshape_as(edge_input)
+        #edge_weight = graph.edge_weight.reshape_as(edge_input)
         #edge_weight = torch.cat([graph.edge_weight, torch.ones(graph.num_node, device=graph.device)])
         #edge_weight = torch.ones(size=relation_input.size(), device= relation_input.device)
         edge_weight = graph.edge_weight.unsqueeze(-1).unsqueeze(-1).expand_as(edge_input)
@@ -106,7 +106,7 @@ class GeneralizedRelationalConv(layers.MessagePassingBase):
         #edge_weight = torch.cat([graph.edge_weight, torch.full((graph.num_node,), fill_value=float(-1), device=self.device)])
         edge_weight = edge_weight.unsqueeze(-1).unsqueeze(-1)
         degree_out = graph.degree_out.unsqueeze(-1).unsqueeze(-1) + 1
-        nodes = torch.Tensor([i for i in range(0, graph.num_node + 1)], device=graph.device).requires_grad_()
+        #nodes = torch.Tensor([i for i in range(0, graph.num_node + 1)], device=graph.device).requires_grad_()
 
 
         if self.aggregate_func == "sum":
@@ -115,14 +115,13 @@ class GeneralizedRelationalConv(layers.MessagePassingBase):
             update = scatter_mean(message * edge_weight, node_out, dim=0, dim_size=graph.num_node)
         elif self.aggregate_func == "max":
             update, argmin = scatter_max(message, node_out, dim=0, dim_size=graph.num_node)
-            message_source = torch.cat((node_in, torch.tensor([graph.num_node], device=graph.device)))
-            predecessor = nodes[message_source[argmin].long()]
+            #message_source = torch.cat((node_in, torch.tensor([graph.num_node], device=graph.device)))
         elif self.aggregate_func == "min":
             #find the minimum message from unaltered messages. Scaling with edge weights is
             #done in the message function
             update, argmin = scatter_min(message, node_out, dim=0, dim_size=graph.num_node)
-            message_source = torch.cat((node_in, torch.tensor([graph.num_node], device=graph.device)))
-            predecessor = nodes[message_source[argmin].long()]
+            #message_source = torch.cat((node_in, torch.tensor([graph.num_node], device=graph.device)))
+            #predecessor = nodes[message_source[argmin].long()]
         elif self.aggregate_func == "pna":
             mean = scatter_mean(message * edge_weight, node_out, dim=0, dim_size=graph.num_node)
             sq_mean = scatter_mean(message ** 2 * edge_weight, node_out, dim=0, dim_size=graph.num_node)
@@ -135,11 +134,11 @@ class GeneralizedRelationalConv(layers.MessagePassingBase):
             scale = scale / scale.mean()
             scales = torch.cat([torch.ones_like(scale), scale, 1 / scale.clamp(min=1e-2)], dim=-1)
             update = (features.unsqueeze(-1) * scales.unsqueeze(-2)).flatten(-2)
-            predecessor=None
+            #predecessor=None
         else:
             raise ValueError("Unknown aggregation function `%s`" % self.aggregate_func)
 
-        return update, predecessor
+        return update
 
 
     #Only eligible for use with cuda kernel. The program runs on cpu, so we call
@@ -201,10 +200,10 @@ class GeneralizedRelationalConv(layers.MessagePassingBase):
     #Run the output of a layer through a linear layer and an activation function and return the
     #updated node representation
     def combine(self, input, update):
-        output = self.linear(torch.cat([input, update[0]], dim=-1))
+        output = self.linear(torch.cat([input, update], dim=-1))
         if self.layer_norm:
             output = self.layer_norm(output)
         if self.activation:
             output = self.activation(output)
         #output = update[0]
-        return output, update[1]
+        return output

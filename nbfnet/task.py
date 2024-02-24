@@ -5,6 +5,7 @@ from torchdrug import data
 import torch
 from torch.nn import functional as F
 from torch.utils import data as torch_data
+from operator import itemgetter
 
 from ogb import linkproppred
 
@@ -87,65 +88,109 @@ class PredecessorPrediction(tasks.NodePropertyPrediction, core.Configurable):
         self.valid_sources = valid_sources
         self.test_sources = test_sources
 
+
     #function that runs the model, obtains the predictions, makes the targets (predecessor for each node) and
     #returns the predictions and the ground truth
     #input: the source node
     #output: the predictions and the ground truths for each node
     def predict_and_target(self, batch, all_loss=None, metric=None):
-        batch_size = len(batch)
         node_0 = batch['node_index']
+        batch_size = len(node_0)
         #run through the model
-        pred, decessor = self.model(self.train_graph, node_0, all_loss, metric=None)
-        pred = pred.squeeze(0)
+        pred = self.model(self.train_graph, node_0, all_loss, metric=None)
+        #pred = pred.squeeze(0)
 
         if self.split == "train":
-            node = self.train_sources.index(node_0)
-            indices = [i for i in self.train_pred[node].keys()]
-            target = torch.zeros(len(pred))
-            k = 0
-            for i in range(0, len(pred)):
-                # if a node does not have a predecessor node
-                # the node is a predecessor to itself
-                if k not in self.train_pred[node].keys():
-                    target[k] = k
-                elif k in self.train_pred[node].keys():
-                    if self.train_pred[node][k] ==[]:
-                        target[k] = k
-                    else:
-                        target[k] = self.train_pred[node][k][0]
-                k+=1
+            node = [self.train_sources.index(i) for i in node_0]
+            #node = [i for i in range(len(self.train_sources)) if self.train_sources[i] in node_0]
+            #node = self.train_sources.index(node_0)
+            #indices = [i for i in self.train_pred[node].keys()]
+            indices = []
+
+            for i in itemgetter(*node)(self.train_pred):
+                if batch_size > 1:
+                    indice = [j for j in i.keys()]
+                    indices.append(indice)
+                elif batch_size == 1:
+                    indices.append(i)
+
+            target = torch.zeros(batch_size, len(pred[0]), device=pred.device)
+
+            for j in range(0, batch_size):
+                k = 0
+                for i in range(0, len(pred[0])):
+                    # if a node does not have a predecessor node
+                    # the node is a predecessor to itself
+                    if k not in self.train_pred[node[j]].keys():
+                        target[j, k] = k
+                    elif k in self.train_pred[node[j]].keys():
+                        if self.train_pred[node[j]][k] == []:
+                            target[j, k] = k
+                        else:
+                            target[j, k] = self.train_pred[node[j]][k][0]
+                    k+=1
 
         elif self.split == "valid":
-            node = self.valid_sources.index(node_0)
-            indices = [i for i in self.train_pred[node].keys()]
-            target = torch.zeros(len(pred))
-            k = 0
-            for i in range(0, len(pred)):
-                if k not in self.valid_pred[node].keys():
-                    target[k] = k
-                elif k in self.valid_pred[node].keys():
-                    if self.valid_pred[node][k] ==[]:
-                        target[k] = k
-                    else:
-                        target[k] = self.valid_pred[node][k][0]
-                k+=1
+            #node = [i for i in range(len(self.valid_sources)) if self.valid_sources[i] in node_0]
+            node = [self.valid_sources.index(i) for i in node_0]
+            #node = self.train_sources.index(node_0)
+            #indices = [i for i in self.train_pred[node].keys()]
+            indices = []
+
+            for i in itemgetter(*node)(self.valid_pred):
+                if batch_size > 1:
+                    indice = [j for j in i.keys()]
+                    indices.append(indice)
+                elif batch_size == 1:
+                    indices.append(i)
+
+            target = torch.zeros(batch_size, len(pred[0]), device=pred.device)
+
+            for j in range(0, batch_size):
+                k = 0
+                for i in range(0, len(pred[0])):
+                    # if a node does not have a predecessor node
+                    # the node is a predecessor to itself
+                    if k not in self.valid_pred[node[j]].keys():
+                        target[j, k] = k
+                    elif k in self.valid_pred[node[j]].keys():
+                        if self.valid_pred[node[j]][k] == []:
+                            target[j, k] = k
+                        else:
+                            target[j, k] = self.valid_pred[node[j]][k][0]
+                    k+=1
         elif self.split == "test":
-            node = self.test_sources.index(node_0)
-            indices = [i for i in self.train_pred[node].keys()]
-            target = torch.zeros(len(pred))
-            k = 0
-            for i in range(0,len(pred)):
-                if k not in self.test_pred[node].keys():
-                    target[k] = k
-                elif k in self.test_pred[node].keys():
-                    if self.test_pred[node][k] ==[]:
-                        target[k] = k
-                    else:
-                        target[k] = self.test_pred[node][k][0]
-                k+=1
+            #node = [i for i in range(len(self.test_sources)) if self.test_sources[i] in node_0]
+            node = [self.test_sources.index(i) for i in node_0]
+            #node = self.train_sources.index(node_0)
+            #indices = [i for i in self.train_pred[node].keys()]
+            indices = []
 
+            for i in itemgetter(*node)(self.test_pred):
+                if batch_size > 1:
+                    indice = [j for j in i.keys()]
+                    indices.append(indice)
+                elif batch_size == 1:
+                    indices.append(i)
+
+            target = torch.zeros(batch_size, len(pred[0]), device=pred.device)
+
+            for j in range(0, batch_size):
+                k = 0
+                for i in range(0, len(pred[0])):
+                    # if a node does not have a predecessor node
+                    # the node is a predecessor to itself
+                    if k not in self.test_pred[node[j]].keys():
+                        target[j, k] = k
+                    elif k in self.test_pred[node[j]].keys():
+                        if self.test_pred[node[j]][k] == []:
+                            target[j, k] = k
+                        else:
+                            target[j, k] = self.test_pred[node[j]][k][0]
+                    k+=1
+
+        #
         return pred, target
-
     #A forward pass through the model. Obtains the predictions and the ground truths for each node
     #and calculates the loss (cross_entropy).
     def forward(self, batch):
@@ -154,6 +199,9 @@ class PredecessorPrediction(tasks.NodePropertyPrediction, core.Configurable):
         metric = {}
         #make predictions
         pred, target = self.predict_and_target(batch, all_loss, metric)
+        pred = torch.transpose(pred, 1, 2)
+        #pred = pred.squeeze(0)
+        #target = target.t().squeeze(1)
 
 
         #calculate loss
@@ -183,6 +231,7 @@ class PredecessorPrediction(tasks.NodePropertyPrediction, core.Configurable):
 
         #pred = pred.flatten()
         target = target
+        #pred = torch.transpose(pred, 1,2 )
 
         metric = {}
         #calculate metric, accuracy is used.

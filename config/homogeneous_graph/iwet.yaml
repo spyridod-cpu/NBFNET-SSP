@@ -2,8 +2,8 @@ output_dir: ~/experiments/
 
 dataset:
   class: Road
-  path: ~/Desktop/NBFNET-SSP11/data
-  name: lagadas_small
+  path: ~/Desktop/NBFNET-SSP/data
+  name: iwet
   random_weights: no
 
 task:
@@ -11,7 +11,7 @@ task:
   model:
     class: NBFNet
     input_dim: 32
-    hidden_dims: [32,32]
+    hidden_dims: [32, 32, 32]
     message_func: add
     aggregate_func: min
     short_cut: no
@@ -19,8 +19,8 @@ task:
     dependent: no
     remove_one_hop: no
     symmetric: no
-    num_nodes: 78
-    num_iterations: 4
+    num_nodes: 18393
+    num_iterations: 25
     recover: no
   criterion: ce
 
@@ -30,9 +30,9 @@ optimizer:
 
 engine:
   gpus: {{ gpus }}
-  batch_size: 16
+  batch_size: 1
 
 train:
-  num_epoch: 200
+  num_epoch: 20
 
 metric: accuracy

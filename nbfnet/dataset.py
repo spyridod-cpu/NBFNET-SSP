@@ -400,34 +400,7 @@ class Road(data.NodeClassificationDataset):
         lengths[-1] = length - sum(lengths[:-1])
 
         g = torch.Generator()
-        g.manual_seed(0)
+        g.manual_seed(3)
         return torch_data.random_split(self, lengths, generator=g)
 
 
-
-'''
-#Class that adjusts the dataset for link prediction task.
-#Inherits from MapMatching class.
-@R.register("datasets.TrivialPrediction")
-class TrivialPrediction(Trivial):
-
-    def __init__(self, **kwargs):
-        super(TrivialPrediction, self).__init__(**kwargs)
-        self.transform = None
-
-    def __getitem__(self, index):
-        return self.graph.edge_list[index]
-
-    def __len__(self):
-        return self.graph.num_edge
-    #Method that splits the dataset into training, validation and test datasets.
-    def split(self, ratios=(50, 25, 25)):
-        length = self.graph.num_edge
-        norm = sum(ratios)
-        lengths = [int(r / norm * length) for r in ratios]
-        lengths[-1] = length - sum(lengths[:-1])
-
-        g = torch.Generator()
-        g.manual_seed(0)
-        return torch_data.random_split(self, lengths, generator=g)
-'''

@@ -103,10 +103,11 @@ class NeuralBellmanFordNetwork(nn.Module, core.Configurable):
         #get representation of an edge of relation type 0
         query = self.query(r_index)
         index = h_index.unsqueeze(-1).expand_as(query)
+        index_t = range(0, len(query))
         #set boundary condition as 100 (equivalent to infinity).
         boundary = torch.full((graph.num_node, *query.shape), fill_value=float(100), device=self.device)
         #set boundary condition of source node to 0.
-        boundary[h_index.item()][0] = 0
+        boundary[h_index, index_t] = 0
         #boundary.scatter_add_(0, index.unsqueeze(0), query.unsqueeze(0))
         with graph.graph():
             graph.query = query
@@ -125,11 +126,11 @@ class NeuralBellmanFordNetwork(nn.Module, core.Configurable):
                     step_graph = graph
                 #pass through a layer and extract reprentations of each layer
                 #and message sources for each node
-                hidden, predecessor = layer(step_graph, layer_input)
+                hidden = layer(step_graph, layer_input)
                 if self.short_cut and hidden.shape == layer_input.shape:
                     hidden = hidden + layer_input
                 hiddens.append(hidden)
-                step_graphs.append(step_graph)
+                #step_graphs.append(step_graph)
                 layer_input = hidden
 
         node_query = query.expand(graph.num_node, -1, -1)
@@ -142,8 +143,7 @@ class NeuralBellmanFordNetwork(nn.Module, core.Configurable):
 
         return {
             "node_feature": output,
-            "step_graphs": step_graphs,
-            "predecessor": predecessor
+            "step_graphs": step_graphs
         }
 
 
@@ -165,14 +165,12 @@ class NeuralBellmanFordNetwork(nn.Module, core.Configurable):
         output = self.bellmanford(graph, h_index[:, 0], r_index[:, 0])
         #extract node representations
         feature = output["node_feature"].transpose(0, 1)
-        #extract source nodes for every message
-        predecessor = output["predecessor"]
         #index = t_index.unsqueeze(-1).expand(-1, -1, feature.shape[-1])
         #feature = feature.gather(1, index)
 
         #classify nodes based on node representaions
         score = self.mlp(feature).squeeze(-1)
-        return score, predecessor
+        return score
 
     #Fuction that constructs the predicted shortest path from source node h_index, to destination
     #node t_index. There is an option to use a recovery algorithm.
@@ -183,7 +181,7 @@ class NeuralBellmanFordNetwork(nn.Module, core.Configurable):
         if self.recover:
             assert h_index.numel() == 1 and h_index.ndim == 1
             #make a forward pass through the model
-            output, dec = self.forward(graph, h_index, r_index)
+            output = self.forward(graph, h_index, r_index)
             preds = []
             pred = output
             prev_node2 = -1
@@ -193,7 +191,7 @@ class NeuralBellmanFordNetwork(nn.Module, core.Configurable):
             #for every node assemble predictions of predecessor nodes. Only eligible nodes are allowed
             #i.e. nodes that connect to query node.
             for i in range(0, graph.num_node):
-                #all eligible predecessor nodes u must be connect to node i with an
+                #all eligible predecessor nodes u must be connected to node i with an
                 #edge e = (u, i).
                 prev = (graph.edge_list[:, 1] == i).nonzero(as_tuple=False).flatten()
                 #get the previous nodes u from the list of edges
@@ -201,9 +199,11 @@ class NeuralBellmanFordNetwork(nn.Module, core.Configurable):
                 # pred[i] = pred[i, prev]
                 #if some node has no predecessors, it is a predecessor to itself.
                 if not prev.tolist() == []:
+                    prev = prev.unique()
                     preds.append(prev.tolist())
                 else:
                     preds.append([i])
+                prev = prev.unique()
 
             temp_index = t_index.item()
             prev_node = 100

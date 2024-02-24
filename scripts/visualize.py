@@ -124,16 +124,21 @@ if __name__ == "__main__":
     n = 0
     node_vocab, inv_node_vocab = read_vocab(cfg.data['name'])
     for node in solver.test_set:
-        for k in range(0, graph.num_node):
+        for k in range(0, 10):
             #run model and get model path
             orig = node['node_index']
             dest = k
+            try:
+                shortest_path = nx.shortest_path(G_di_normal_weights, inv_node_vocab[orig], inv_node_vocab[dest],
+                                                 weight='length')
+            except:
+                continue
             path = solver.model.model.visualize(graph, torch.tensor(orig).unsqueeze(-1), torch.tensor(dest).unsqueeze(-1), torch.tensor(0).unsqueeze(-1))
             path = [node for node in path]
             path_translated = [inv_node_vocab[node] for node in path]
             #if a path exists in the graph
             try:
-                shortest_path = nx.shortest_path(G_di_normal_weights, inv_node_vocab[orig], inv_node_vocab[dest], weight = 'length')
+
                 path_length = path_weight(G_di_normal_weights, path_translated, weight='length')
             except:
                 continue
